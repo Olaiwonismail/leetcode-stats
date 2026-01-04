@@ -4,7 +4,7 @@ import { queries, LEETCODE_API_URL, QueryKey } from '../../lib/leetcode-queries'
 // Fetch all LeetCode data for the card
 async function fetchAllData(username: string) {
     const results: Record<string, unknown> = {};
-    const queryKeys: QueryKey[] = ['problems', 'activity', 'skills', 'profile'];
+    const queryKeys: QueryKey[] = ['problems', 'activity', 'skills', 'profile', 'submissions'];
 
     for (const queryKey of queryKeys) {
         const query = queries[queryKey];
@@ -19,7 +19,8 @@ async function fetchAllData(username: string) {
                     query,
                     variables: {
                         username,
-                        ...(queryKey === 'activity' ? { year: new Date().getFullYear() } : {})
+                        ...(queryKey === 'activity' ? { year: new Date().getFullYear() } : {}),
+                        ...(queryKey === 'submissions' ? { limit: 5 } : {})
                     },
                 }),
                 next: { revalidate: 300 },
@@ -78,17 +79,36 @@ function generateHeatmap(submissionCalendar: string | null, startX: number, star
     return squares.join('');
 }
 
-// Generate the SVG card - focused on 5 key stats
-function generateSVG(username: string, data: Record<string, unknown>): string {
+// Generate the SVG card - dynamic sections
+function generateSVG(username: string, data: Record<string, unknown>, options: {
+    showDifficulty: boolean;
+    showActivity: boolean;
+    showStats: boolean;
+    showBadges: boolean;
+    showSubmissions: boolean;
+    showBeats: boolean;
+    showRank: boolean;
+}): string {
+    const { showDifficulty, showActivity, showStats, showBadges, showSubmissions, showBeats, showRank } = options;
+
     // Extract data safely
-    const problems = data.problems as { allQuestionsCount?: { difficulty: string; count: number }[]; matchedUser?: { submitStatsGlobal?: { acSubmissionNum?: { difficulty: string; count: number }[] } } } | null;
+    const problems = data.problems as {
+        allQuestionsCount?: { difficulty: string; count: number }[];
+        matchedUser?: {
+            submitStatsGlobal?: { acSubmissionNum?: { difficulty: string; count: number }[] };
+            problemsSolvedBeatsStats?: { difficulty: string; percentage: number | null }[];
+        }
+    } | null;
+
     const activity = data.activity as { matchedUser?: { userCalendar?: { streak?: number; totalActiveDays?: number; submissionCalendar?: string; dccBadges?: { badge: { name: string } }[] } } } | null;
     const skills = data.skills as { matchedUser?: { tagProblemCounts?: { fundamental?: { tagName: string; problemsSolved: number }[]; intermediate?: { tagName: string; problemsSolved: number }[]; advanced?: { tagName: string; problemsSolved: number }[] } } } | null;
-    const profile = data.profile as { matchedUser?: { profile?: { realName?: string } } } | null;
+    const profile = data.profile as { matchedUser?: { profile?: { realName?: string; ranking?: number } } } | null;
+    const submissions = data.submissions as { recentAcSubmissionList?: { title: string; timestamp: string }[] } | null;
 
-    // Problem stats - for Difficulty Breakdown & Total Solved
+    // Problem stats
     const allQuestions = problems?.allQuestionsCount || [];
     const acSubmissions = problems?.matchedUser?.submitStatsGlobal?.acSubmissionNum || [];
+    const beatsStats = problems?.matchedUser?.problemsSolvedBeatsStats || [];
 
     const totalEasy = allQuestions.find(q => q.difficulty === 'Easy')?.count || 0;
     const totalMedium = allQuestions.find(q => q.difficulty === 'Medium')?.count || 0;
@@ -99,6 +119,10 @@ function generateSVG(username: string, data: Record<string, unknown>): string {
     const solvedHard = acSubmissions.find(s => s.difficulty === 'Hard')?.count || 0;
     const totalSolved = solvedEasy + solvedMedium + solvedHard;
 
+    const beatsEasy = beatsStats.find(s => s.difficulty === 'Easy')?.percentage ?? 0;
+    const beatsMedium = beatsStats.find(s => s.difficulty === 'Medium')?.percentage ?? 0;
+    const beatsHard = beatsStats.find(s => s.difficulty === 'Hard')?.percentage ?? 0;
+
     // Top 5 skill tags
     const allTags = skills ? [
         ...(skills?.matchedUser?.tagProblemCounts?.fundamental || []),
@@ -106,19 +130,59 @@ function generateSVG(username: string, data: Record<string, unknown>): string {
         ...(skills?.matchedUser?.tagProblemCounts?.advanced || []),
     ].sort((a, b) => b.problemsSolved - a.problemsSolved).slice(0, 5) : [];
 
-    // Activity stats - for Submission Heatmap
+    // Activity stats
     const streak = activity?.matchedUser?.userCalendar?.streak || 0;
     const totalActiveDays = activity?.matchedUser?.userCalendar?.totalActiveDays || 0;
     const submissionCalendar = activity?.matchedUser?.userCalendar?.submissionCalendar || null;
 
-    // Monthly challenge badges (DCC badges)
+    // Monthly challenge badges
     const dccBadges = activity?.matchedUser?.userCalendar?.dccBadges || [];
-    const recentBadges = dccBadges.slice(-5).reverse(); // Last 5 badges
+    const recentBadges = dccBadges.slice(-5).reverse();
+
+    // Recent Submissions
+    const recentSubs = submissions?.recentAcSubmissionList?.slice(0, 5) || [];
 
     // Profile info
     const realName = profile?.matchedUser?.profile?.realName || '';
+    const ranking = profile?.matchedUser?.profile?.ranking || 0;
 
-    const cardHeight = 340;
+    // Layout Calculations
+    let currentY = 88;
+    const headerHeight = 88;
+    const row1Height = 80;
+    const rowGap = 20;
+
+    // Row 1: Difficulty & Activity (+ Beats if enabled)
+    const showRow1 = showDifficulty || showActivity;
+    let row1Y = currentY;
+    if (showRow1) {
+        // Increase height if Beats is enabled AND Difficulty is shown
+        const effectiveRow1Height = (showDifficulty && showBeats) ? row1Height + 25 : row1Height;
+        currentY += effectiveRow1Height + rowGap;
+    }
+
+    // Row 2: Skills
+    const showRow2 = showStats;
+    let row2Y = currentY;
+    if (showRow2) {
+        currentY += 60 + rowGap;
+    }
+
+    // Row 3: Badges
+    const showRow3 = showBadges;
+    let row3Y = currentY;
+    if (showRow3) {
+        currentY += 60 + rowGap;
+    }
+
+    // Row 4: Recent Submissions
+    const showRow4 = showSubmissions;
+    let row4Y = currentY;
+    if (showRow4) {
+        currentY += (recentSubs.length * 20) + 35 + rowGap; // title + list items
+    }
+
+    const cardHeight = Math.max(150, currentY);
 
     return `
 <svg xmlns="http://www.w3.org/2000/svg" width="800" height="${cardHeight}" viewBox="0 0 800 ${cardHeight}">
@@ -167,6 +231,13 @@ function generateSVG(username: string, data: Record<string, unknown>): string {
     <text x="80" y="${realName && realName !== username ? '32' : '40'}" font-family="'Segoe UI', Arial, sans-serif" font-size="20" font-weight="700" fill="#ffffff">${username}</text>
     ${realName && realName !== username ? `<text x="80" y="52" font-family="'Segoe UI', sans-serif" font-size="12" fill="#8b949e">${realName}</text>` : ''}
     
+    <!-- Global Ranking (if enabled) -->
+    ${(showRank && ranking > 0) ? `
+    <g transform="translate(450, 24)">
+        <text x="0" y="0" font-family="'Segoe UI', sans-serif" font-size="11" fill="#8b949e">GLOBAL RANKING</text>
+        <text x="0" y="20" font-family="'Segoe UI', sans-serif" font-size="16" font-weight="600" fill="#ffffff">#${ranking.toLocaleString()}</text>
+    </g>` : ''}
+
     <!-- Total Solved Badge (right side of header) -->
     <g transform="translate(620, 12)">
         <rect x="0" y="0" width="160" height="46" rx="10" fill="#21262d"/>
@@ -174,27 +245,41 @@ function generateSVG(username: string, data: Record<string, unknown>): string {
         <text x="80" y="38" font-family="'Segoe UI', sans-serif" font-size="20" font-weight="700" fill="url(#accentGradient)" text-anchor="middle" filter="url(#glow)">${totalSolved}</text>
     </g>
     
+    ${showRow1 ? `
     <!-- Row 1: Difficulty Breakdown + Activity Stats -->
-    <g transform="translate(24, 88)">
+    <g transform="translate(24, ${row1Y})">
+        ${showDifficulty ? `
         <!-- Left: Difficulty Cards -->
         <text x="0" y="0" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#ffa116">📊 DIFFICULTY</text>
         
         <g transform="translate(0, 18)">
+            <!-- Easy -->
             <rect x="0" y="0" width="110" height="60" rx="8" fill="#21262d"/>
             <text x="55" y="20" font-family="'Segoe UI', sans-serif" font-size="10" fill="#00b8a3" text-anchor="middle" font-weight="600">EASY</text>
             <text x="55" y="42" font-family="'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#00b8a3" text-anchor="middle">${solvedEasy}<tspan font-size="11" fill="#6e7681">/${totalEasy}</tspan></text>
             
+            <!-- Medium -->
             <rect x="120" y="0" width="110" height="60" rx="8" fill="#21262d" stroke="#ffc01e" stroke-width="1.5"/>
             <text x="175" y="20" font-family="'Segoe UI', sans-serif" font-size="10" fill="#ffc01e" text-anchor="middle" font-weight="600">MEDIUM</text>
             <text x="175" y="42" font-family="'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#ffc01e" text-anchor="middle">${solvedMedium}<tspan font-size="11" fill="#6e7681">/${totalMedium}</tspan></text>
             
+            <!-- Hard -->
             <rect x="240" y="0" width="110" height="60" rx="8" fill="#21262d"/>
             <text x="295" y="20" font-family="'Segoe UI', sans-serif" font-size="10" fill="#ff375f" text-anchor="middle" font-weight="600">HARD</text>
             <text x="295" y="42" font-family="'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#ff375f" text-anchor="middle">${solvedHard}<tspan font-size="11" fill="#6e7681">/${totalHard}</tspan></text>
+
+            <!-- Beats Stats (if enabled) -->
+            ${showBeats ? `
+            <text x="55" y="75" font-family="'Segoe UI', sans-serif" font-size="10" fill="#8b949e" text-anchor="middle">Beats ${beatsEasy.toFixed(1)}%</text>
+            <text x="175" y="75" font-family="'Segoe UI', sans-serif" font-size="10" fill="#8b949e" text-anchor="middle">Beats ${beatsMedium.toFixed(1)}%</text>
+            <text x="295" y="75" font-family="'Segoe UI', sans-serif" font-size="10" fill="#8b949e" text-anchor="middle">Beats ${beatsHard.toFixed(1)}%</text>
+            ` : ''}
         </g>
+        ` : ''}
         
+        ${showActivity ? `
         <!-- Right: Activity/Heatmap -->
-        <g transform="translate(380, 0)">
+        <g transform="translate(${showDifficulty ? 380 : 0}, 0)">
             <text x="0" y="0" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#ffa116">🔥 ACTIVITY</text>
             
             <g transform="translate(0, 18)">
@@ -212,10 +297,12 @@ function generateSVG(username: string, data: Record<string, unknown>): string {
                 </g>
             </g>
         </g>
-    </g>
+        ` : ''}
+    </g>` : ''}
     
+    ${showRow2 ? `
     <!-- Row 2: Top Skill Tags -->
-    <g transform="translate(24, 185)">
+    <g transform="translate(24, ${row2Y})">
         <text x="0" y="0" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#ffa116">🏷️ TOP SKILLS</text>
         
         <g transform="translate(0, 18)">
@@ -230,10 +317,11 @@ function generateSVG(username: string, data: Record<string, unknown>): string {
                 <text x="100" y="28" font-family="'Segoe UI', sans-serif" font-size="11" fill="#6e7681" text-anchor="middle">No skills data available</text>
             `}
         </g>
-    </g>
+    </g>` : ''}
     
+    ${showRow3 ? `
     <!-- Row 3: Monthly Badges -->
-    <g transform="translate(24, 265)">
+    <g transform="translate(24, ${row3Y})">
         <text x="0" y="0" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#ffa116">🏅 MONTHLY BADGES</text>
         
         <g transform="translate(0, 18)">
@@ -247,7 +335,24 @@ function generateSVG(username: string, data: Record<string, unknown>): string {
                 <text x="150" y="25" font-family="'Segoe UI', sans-serif" font-size="11" fill="#6e7681" text-anchor="middle">Complete monthly challenges to earn badges</text>
             `}
         </g>
-    </g>
+    </g>` : ''}
+
+    ${showRow4 ? `
+    <!-- Row 4: Recent Submissions -->
+    <g transform="translate(24, ${row4Y})">
+        <text x="0" y="0" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#ffa116">⚡ RECENT SUBMISSIONS</text>
+        
+        <g transform="translate(0, 18)">
+            ${recentSubs.length > 0 ? recentSubs.map((sub, i) => `
+                <g transform="translate(0, ${i * 24})">
+                    <text x="0" y="10" font-family="'Segoe UI', sans-serif" font-size="11" fill="#c9d1d9">• ${sub.title}</text>
+                    <text x="750" y="10" font-family="'Segoe UI', sans-serif" font-size="10" fill="#8b949e" text-anchor="end">${new Date(parseInt(sub.timestamp) * 1000).toLocaleDateString()}</text>
+                </g>
+            `).join('') : `
+                <text x="0" y="10" font-family="'Segoe UI', sans-serif" font-size="11" fill="#6e7681">No recent submissions found</text>
+            `}
+        </g>
+    </g>` : ''}
     
     <!-- Footer -->
     <text x="780" y="${cardHeight - 10}" font-family="'Segoe UI', sans-serif" font-size="9" fill="#30363d" text-anchor="end">leetcode-stats-card</text>
@@ -258,6 +363,17 @@ function generateSVG(username: string, data: Record<string, unknown>): string {
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const username = searchParams.get('username');
+
+    // Parse visibility options
+    const showDifficulty = searchParams.get('difficulty') !== 'false';
+    const showActivity = searchParams.get('activity') !== 'false';
+    const showStats = searchParams.get('skills') !== 'false';
+    const showBadges = searchParams.get('badges') !== 'false';
+
+    // New options (default true)
+    const showSubmissions = searchParams.get('submissions') !== 'false';
+    const showBeats = searchParams.get('beats') !== 'false';
+    const showRank = searchParams.get('rank') !== 'false';
 
     if (!username) {
         return new NextResponse(
@@ -304,7 +420,15 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        const svg = generateSVG(username, data);
+        const svg = generateSVG(username, data, {
+            showDifficulty,
+            showActivity,
+            showStats,
+            showBadges,
+            showSubmissions,
+            showBeats,
+            showRank
+        });
 
         return new NextResponse(svg, {
             status: 200,

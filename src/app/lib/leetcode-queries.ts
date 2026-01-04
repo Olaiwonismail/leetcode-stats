@@ -106,13 +106,25 @@ export const queries = {
       }
     }
   `,
+
+  // Submissions data - for Recent Submissions list
+  submissions: `
+    query userRecentAcSubmissions($username: String!, $limit: Int!) {
+      recentAcSubmissionList(username: $username, limit: $limit) {
+        id
+        title
+        titleSlug
+        timestamp
+      }
+    }
+  `,
 };
 
 export type QueryKey = keyof typeof queries;
 
 export async function fetchLeetCodeStats(username: string): Promise<Record<string, unknown>> {
   const results: Record<string, unknown> = {};
-  const queryKeys: QueryKey[] = ['problems', 'activity', 'skills', 'profile'];
+  const queryKeys: QueryKey[] = ['problems', 'activity', 'skills', 'profile', 'submissions'];
 
   for (const queryKey of queryKeys) {
     const query = queries[queryKey];
@@ -129,7 +141,8 @@ export async function fetchLeetCodeStats(username: string): Promise<Record<strin
           query,
           variables: {
             username,
-            ...(queryKey === 'activity' ? { year: new Date().getFullYear() } : {})
+            ...(queryKey === 'activity' ? { year: new Date().getFullYear() } : {}),
+            ...(queryKey === 'submissions' ? { limit: 5 } : {})
           },
         }),
         next: { revalidate: 60 },

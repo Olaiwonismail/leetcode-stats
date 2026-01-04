@@ -1,6 +1,7 @@
 import { fetchLeetCodeStats } from './lib/leetcode-queries';
 import { CopyButton } from './components/CopyButton';
 import { CopyUrlButton } from './components/CopyUrlButton';
+import { StatsForm } from './components/StatsForm';
 
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -13,6 +14,7 @@ export default async function Home({ searchParams }: PageProps) {
   let data: Record<string, unknown> | null = null;
   let error: string | null = null;
 
+  // Fetch logic
   if (username) {
     try {
       data = await fetchLeetCodeStats(username);
@@ -39,7 +41,21 @@ export default async function Home({ searchParams }: PageProps) {
   }
 
   const jsonString = data ? JSON.stringify(data, null, 2) : '';
-  const cardUrl = username ? `/api/card?username=${encodeURIComponent(username)}` : '';
+
+  // Construct Card URL with params
+  const cardParams = new URLSearchParams();
+  if (username) cardParams.set('username', username);
+
+  // Default is true, so only set false if explicitly false
+  if (params.difficulty === 'false') cardParams.set('difficulty', 'false');
+  if (params.activity === 'false') cardParams.set('activity', 'false');
+  if (params.skills === 'false') cardParams.set('skills', 'false');
+  if (params.badges === 'false') cardParams.set('badges', 'false');
+  if (params.submissions === 'false') cardParams.set('submissions', 'false');
+  if (params.beats === 'false') cardParams.set('beats', 'false');
+  if (params.rank === 'false') cardParams.set('rank', 'false');
+
+  const cardUrl = username ? `/api/card?${cardParams.toString()}` : '';
 
   return (
     <div className="page-container">
@@ -73,38 +89,15 @@ export default async function Home({ searchParams }: PageProps) {
             <span className="info-icon">🏅</span>
             <span>Challenge Badges</span>
           </div>
+          {/* New sections info */}
           <div className="info-item">
-            <span className="info-icon">✅</span>
-            <span>Total Solved</span>
+            <span className="info-icon">⚡</span>
+            <span>Recent Submissions</span>
           </div>
         </div>
 
         {/* Form */}
-        <form className="form-card" action="/" method="GET">
-          {/* Username Input */}
-          <div className="input-group">
-            <label htmlFor="username">LeetCode Username</label>
-            <input
-              type="text"
-              id="username"
-              name="username"
-              placeholder="e.g., neal_wu"
-              defaultValue={username}
-              required
-              className="username-input"
-            />
-          </div>
-
-          {/* Submit Button */}
-          <button type="submit" className="submit-button">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
-              <path d="M2 17l10 5 10-5"></path>
-              <path d="M2 12l10 5 10-5"></path>
-            </svg>
-            Generate Card
-          </button>
-        </form>
+        <StatsForm />
 
         {/* Error Message */}
         {error && (
@@ -155,6 +148,9 @@ export default async function Home({ searchParams }: PageProps) {
                   className="card-image"
                 />
               </div>
+              <p className="card-note">
+                Note: Sections can be customized using the checkboxes above.
+              </p>
             </div>
 
             {/* Card URL Section */}
@@ -182,7 +178,7 @@ export default async function Home({ searchParams }: PageProps) {
                     <polyline points="16 18 22 12 16 6"></polyline>
                     <polyline points="8 6 2 12 8 18"></polyline>
                   </svg>
-                  JSON Response
+                  API JSON Response
                 </span>
                 <CopyButton text={jsonString} label="Copy JSON" />
               </div>
