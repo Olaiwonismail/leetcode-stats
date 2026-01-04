@@ -179,10 +179,21 @@ function generateSVG(username: string, data: Record<string, unknown>, options: {
     const showRow4 = showSubmissions;
     let row4Y = currentY;
     if (showRow4) {
-        currentY += (recentSubs.length * 20) + 35 + rowGap; // title + list items
+        currentY += (recentSubs.length * 24) + 35 + rowGap;
     }
 
     const cardHeight = Math.max(150, currentY);
+
+    // Icons
+    const icons = {
+        difficulty: `<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zM7 12h2v5H7zm4-3h2v8h-2zm4-3h2v11h-2z" fill="#ffa116"/>`,
+        activity: `<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" fill="#ffa116"/>`, // Simplified chart-like activity
+        fire: `<path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z" fill="#ff6b35"/>`,
+        calendar: `<path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" fill="#00b8a3"/>`,
+        tag: `<path d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z" fill="#ffa116"/>`,
+        medal: `<path d="M12 7.5c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm7.5 7.5c0-4.14-3.36-7.5-7.5-7.5s-7.5 3.36-7.5 7.5S7.86 22.5 12 22.5s7.5-3.36 7.5-7.5zM12 20.5c-3.03 0-5.5-2.47-5.5-5.5s2.47-5.5 5.5-5.5 5.5 2.47 5.5 5.5-2.47 5.5-5.5 5.5z" fill="#ffa116"/>`, // Simplified medal
+        recent: `<path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z" fill="#ffa116"/>`
+    };
 
     return `
 <svg xmlns="http://www.w3.org/2000/svg" width="800" height="${cardHeight}" viewBox="0 0 800 ${cardHeight}">
@@ -250,7 +261,10 @@ function generateSVG(username: string, data: Record<string, unknown>, options: {
     <g transform="translate(24, ${row1Y})">
         ${showDifficulty ? `
         <!-- Left: Difficulty Cards -->
-        <text x="0" y="0" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#ffa116">📊 DIFFICULTY</text>
+        <g transform="translate(0, -6)">
+            <g transform="scale(0.8)">${icons.difficulty}</g>
+            <text x="24" y="12" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#ffa116">DIFFICULTY</text>
+        </g>
         
         <g transform="translate(0, 18)">
             <!-- Easy -->
@@ -280,16 +294,21 @@ function generateSVG(username: string, data: Record<string, unknown>, options: {
         ${showActivity ? `
         <!-- Right: Activity/Heatmap -->
         <g transform="translate(${showDifficulty ? 380 : 0}, 0)">
-            <text x="0" y="0" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#ffa116">🔥 ACTIVITY</text>
+            <g transform="translate(0, -6)">
+                <g transform="scale(0.8)">${icons.activity}</g>
+                <text x="24" y="12" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#ffa116">ACTIVITY</text>
+            </g>
             
             <g transform="translate(0, 18)">
                 <rect x="0" y="0" width="85" height="35" rx="6" fill="#21262d"/>
-                <text x="42" y="14" font-family="'Segoe UI', sans-serif" font-size="9" fill="#8b949e" text-anchor="middle">🔥 Streak</text>
-                <text x="42" y="28" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#ff6b35" text-anchor="middle">${streak}</text>
+                <g transform="translate(10, 8) scale(0.8)">${icons.fire}</g>
+                <text x="50" y="14" font-family="'Segoe UI', sans-serif" font-size="9" fill="#8b949e" text-anchor="middle">Streak</text>
+                <text x="50" y="28" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#ff6b35" text-anchor="middle">${streak}</text>
 
                 <rect x="95" y="0" width="85" height="35" rx="6" fill="#21262d"/>
-                <text x="137" y="14" font-family="'Segoe UI', sans-serif" font-size="9" fill="#8b949e" text-anchor="middle">📆 Active</text>
-                <text x="137" y="28" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#00b8a3" text-anchor="middle">${totalActiveDays}</text>
+                <g transform="translate(105, 8) scale(0.8)">${icons.calendar}</g>
+                <text x="145" y="14" font-family="'Segoe UI', sans-serif" font-size="9" fill="#8b949e" text-anchor="middle">Active</text>
+                <text x="145" y="28" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#00b8a3" text-anchor="middle">${totalActiveDays}</text>
                 
                 <!-- Compact Heatmap -->
                 <g transform="translate(190, -8)">
@@ -303,7 +322,10 @@ function generateSVG(username: string, data: Record<string, unknown>, options: {
     ${showRow2 ? `
     <!-- Row 2: Top Skill Tags -->
     <g transform="translate(24, ${row2Y})">
-        <text x="0" y="0" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#ffa116">🏷️ TOP SKILLS</text>
+        <g transform="translate(0, -6)">
+            <g transform="scale(0.8)">${icons.tag}</g>
+            <text x="24" y="12" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#ffa116">TOP SKILLS</text>
+        </g>
         
         <g transform="translate(0, 18)">
             ${allTags.length > 0 ? allTags.map((tag, i) => `
@@ -322,7 +344,10 @@ function generateSVG(username: string, data: Record<string, unknown>, options: {
     ${showRow3 ? `
     <!-- Row 3: Monthly Badges -->
     <g transform="translate(24, ${row3Y})">
-        <text x="0" y="0" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#ffa116">🏅 MONTHLY BADGES</text>
+        <g transform="translate(0, -6)">
+            <g transform="scale(0.8)">${icons.medal}</g>
+            <text x="24" y="12" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#ffa116">MONTHLY BADGES</text>
+        </g>
         
         <g transform="translate(0, 18)">
             ${recentBadges.length > 0 ? recentBadges.map((badge, i) => `
@@ -340,7 +365,10 @@ function generateSVG(username: string, data: Record<string, unknown>, options: {
     ${showRow4 ? `
     <!-- Row 4: Recent Submissions -->
     <g transform="translate(24, ${row4Y})">
-        <text x="0" y="0" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#ffa116">⚡ RECENT SUBMISSIONS</text>
+        <g transform="translate(0, -6)">
+            <g transform="scale(0.8)">${icons.recent}</g>
+            <text x="24" y="12" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#ffa116">RECENT SUBMISSIONS</text>
+        </g>
         
         <g transform="translate(0, 18)">
             ${recentSubs.length > 0 ? recentSubs.map((sub, i) => `

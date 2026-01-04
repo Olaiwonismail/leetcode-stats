@@ -2,6 +2,7 @@ import { fetchLeetCodeStats } from './lib/leetcode-queries';
 import { CopyButton } from './components/CopyButton';
 import { CopyUrlButton } from './components/CopyUrlButton';
 import { StatsForm } from './components/StatsForm';
+import { ScrollToResults } from './components/ScrollToResults';
 
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -72,29 +73,6 @@ export default async function Home({ searchParams }: PageProps) {
         </header>
 
         {/* Info Section */}
-        <div className="info-section">
-          <div className="info-item">
-            <span className="info-icon">📊</span>
-            <span>Difficulty Breakdown</span>
-          </div>
-          <div className="info-item">
-            <span className="info-icon">🔥</span>
-            <span>Submission Heatmap</span>
-          </div>
-          <div className="info-item">
-            <span className="info-icon">🏷️</span>
-            <span>Top Skill Tags</span>
-          </div>
-          <div className="info-item">
-            <span className="info-icon">🏅</span>
-            <span>Challenge Badges</span>
-          </div>
-          {/* New sections info */}
-          <div className="info-item">
-            <span className="info-icon">⚡</span>
-            <span>Recent Submissions</span>
-          </div>
-        </div>
 
         {/* Form */}
         <StatsForm />
@@ -127,7 +105,9 @@ export default async function Home({ searchParams }: PageProps) {
 
         {/* Results Section */}
         {data && (
-          <>
+          <div id="results-section">
+            <ScrollToResults targetId="results-section" />
+
             {/* Profile Card Preview */}
             <div className="card-preview">
               <div className="card-header">
@@ -186,7 +166,7 @@ export default async function Home({ searchParams }: PageProps) {
                 <code>{jsonString}</code>
               </pre>
             </div>
-          </>
+          </div>
         )}
       </main>
 
