@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og';
 
-export async function GET(request: Request, { params }: { params: { username: string } }) {
-  const { username } = params;
+export async function GET(request: Request, { params }: { params: Promise<{ username: string }> }) {
+  const { username } = await params;
 
   // 1. Fetch data from LeetCode
   const response = await fetch('https://leetcode.com/graphql', {
