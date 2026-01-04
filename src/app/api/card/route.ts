@@ -118,7 +118,7 @@ function generateSVG(username: string, data: Record<string, unknown>): string {
     // Profile info
     const realName = profile?.matchedUser?.profile?.realName || '';
 
-    const cardHeight = 460;
+    const cardHeight = 340;
 
     return `
 <svg xmlns="http://www.w3.org/2000/svg" width="800" height="${cardHeight}" viewBox="0 0 800 ${cardHeight}">
@@ -246,56 +246,6 @@ function generateSVG(username: string, data: Record<string, unknown>): string {
                 <rect x="0" y="0" width="300" height="40" rx="8" fill="#21262d"/>
                 <text x="150" y="25" font-family="'Segoe UI', sans-serif" font-size="11" fill="#6e7681" text-anchor="middle">Complete monthly challenges to earn badges</text>
             `}
-        </g>
-    </g>
-    
-    <!-- Row 4: Progress & Milestones -->
-    <g transform="translate(24, 340)">
-        <text x="0" y="0" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#ffa116">✅ PROGRESS</text>
-        
-        <g transform="translate(0, 18)">
-            <!-- Progress bar -->
-            <rect x="0" y="0" width="420" height="8" rx="4" fill="#1a1a2e"/>
-            ${(() => {
-            const total = totalEasy + totalMedium + totalHard;
-            const easyW = total > 0 ? (solvedEasy / total) * 420 : 0;
-            const medW = total > 0 ? (solvedMedium / total) * 420 : 0;
-            const hardW = total > 0 ? (solvedHard / total) * 420 : 0;
-            return `
-                    <rect x="0" y="0" width="${easyW}" height="8" rx="4" fill="#00b8a3"/>
-                    <rect x="${easyW}" y="0" width="${medW}" height="8" fill="#ffc01e"/>
-                    <rect x="${easyW + medW}" y="0" width="${hardW}" height="8" rx="4" fill="#ff375f"/>
-                `;
-        })()}
-            
-            <!-- Legend -->
-            <g transform="translate(0, 20)">
-                <circle cx="6" cy="6" r="4" fill="#00b8a3"/>
-                <text x="16" y="10" font-family="'Segoe UI', sans-serif" font-size="10" fill="#8b949e">Easy ${solvedEasy}</text>
-                <circle cx="86" cy="6" r="4" fill="#ffc01e"/>
-                <text x="96" y="10" font-family="'Segoe UI', sans-serif" font-size="10" fill="#8b949e">Med ${solvedMedium}</text>
-                <circle cx="166" cy="6" r="4" fill="#ff375f"/>
-                <text x="176" y="10" font-family="'Segoe UI', sans-serif" font-size="10" fill="#8b949e">Hard ${solvedHard}</text>
-            </g>
-            
-            <!-- Milestones -->
-            <g transform="translate(440, -5)">
-                <rect x="0" y="0" width="75" height="38" rx="6" fill="${totalSolved >= 100 ? '#0e4429' : '#21262d'}"/>
-                <text x="37" y="16" font-family="'Segoe UI', sans-serif" font-size="10" fill="${totalSolved >= 100 ? '#39d353' : '#6e7681'}" text-anchor="middle">${totalSolved >= 100 ? '✓' : ''} 100</text>
-                <text x="37" y="30" font-family="'Segoe UI', sans-serif" font-size="8" fill="#6e7681" text-anchor="middle">Starter</text>
-                
-                <rect x="82" y="0" width="75" height="38" rx="6" fill="${totalSolved >= 200 ? '#0e4429' : '#21262d'}"/>
-                <text x="119" y="16" font-family="'Segoe UI', sans-serif" font-size="10" fill="${totalSolved >= 200 ? '#39d353' : '#6e7681'}" text-anchor="middle">${totalSolved >= 200 ? '✓' : ''} 200</text>
-                <text x="119" y="30" font-family="'Segoe UI', sans-serif" font-size="8" fill="#6e7681" text-anchor="middle">Solid</text>
-                
-                <rect x="164" y="0" width="75" height="38" rx="6" fill="${totalSolved >= 500 ? '#0e4429' : '#21262d'}"/>
-                <text x="201" y="16" font-family="'Segoe UI', sans-serif" font-size="10" fill="${totalSolved >= 500 ? '#39d353' : '#6e7681'}" text-anchor="middle">${totalSolved >= 500 ? '✓' : ''} 500</text>
-                <text x="201" y="30" font-family="'Segoe UI', sans-serif" font-size="8" fill="#6e7681" text-anchor="middle">Pro</text>
-                
-                <rect x="246" y="0" width="75" height="38" rx="6" fill="${totalSolved >= 1000 ? '#0e4429' : '#21262d'}"/>
-                <text x="283" y="16" font-family="'Segoe UI', sans-serif" font-size="10" fill="${totalSolved >= 1000 ? '#39d353' : '#6e7681'}" text-anchor="middle">${totalSolved >= 1000 ? '✓' : ''} 1000</text>
-                <text x="283" y="30" font-family="'Segoe UI', sans-serif" font-size="8" fill="#6e7681" text-anchor="middle">Legend</text>
-            </g>
         </g>
     </g>
     
