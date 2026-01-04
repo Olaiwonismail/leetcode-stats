@@ -1,0 +1,350 @@
+{
+	"info": {
+		"_postman_id": "09ee2495-2291-4977-8e7c-c8451b9a1e14",
+		"name": "Leetcode API Graphql Endpoints",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "25047552",
+		"_collection_link": "https://www.postman.com/flight-geoscientist-10690765/leetcode/collection/yfxu2ou/leetcode-api-graphql-endpoints?action=share&source=collection_link&creator=25047552"
+	},
+	"item": [
+		{
+			"name": "view solved problem for user",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "graphql",
+					"graphql": {
+						"query": "query userProblemsSolved($username: String!) {\r\n    allQuestionsCount {    \r\n        difficulty    \r\n        count  \r\n        }\r\n        matchedUser(username: $username) {\r\n            problemsSolvedBeatsStats { \r\n                difficulty\r\n                percentage    \r\n                }\r\n        submitStatsGlobal {\r\n            acSubmissionNum {        \r\n                difficulty        \r\n                count      \r\n                    }    \r\n                }  \r\n            }             \r\n        }\r\n",
+						"variables": "{\"username\":\"amalmadhu06\"}"
+					}
+				},
+				"url": {
+					"raw": "https://leetcode.com/graphql",
+					"protocol": "https",
+					"host": [
+						"leetcode",
+						"com"
+					],
+					"path": [
+						"graphql"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "view solved problem for user",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "query userProblemsSolved($username: String!) {\r\n    allQuestionsCount {    \r\n        difficulty    \r\n        count  \r\n        }\r\n        matchedUser(username: $username) {\r\n            problemsSolvedBeatsStats { \r\n                difficulty\r\n                percentage    \r\n                }\r\n        submitStatsGlobal {\r\n            acSubmissionNum {        \r\n                difficulty        \r\n                count      \r\n                    }    \r\n                }  \r\n            }             \r\n        }\r\n",
+								"variables": "{\"username\":\"amalmadhu06\"}"
+							}
+						},
+						"url": {
+							"raw": "https://leetcode.com/graphql",
+							"protocol": "https",
+							"host": [
+								"leetcode",
+								"com"
+							],
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Wed, 07 Jun 2023 06:28:56 GMT"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Transfer-Encoding",
+							"value": "chunked"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "vary",
+							"value": "Cookie"
+						},
+						{
+							"key": "x-frame-options",
+							"value": "DENY"
+						},
+						{
+							"key": "set-cookie",
+							"value": "csrftoken=StmK0xiLuPWpU9bUlo31zC0wcJYGiKKkeLKEgf9Zm9iUNDYo8WfcqirYZuGsdkVC; expires=Wed, 05 Jun 2024 06:28:55 GMT; Max-Age=31449600; Path=/; SameSite=Lax; Secure"
+						},
+						{
+							"key": "strict-transport-security",
+							"value": "max-age=31536000; includeSubDomains; preload"
+						},
+						{
+							"key": "content-security-policy",
+							"value": "frame-ancestors 'self' https://*.leetcode.com https://leetcode.com https://www.growingio.com"
+						},
+						{
+							"key": "CF-Cache-Status",
+							"value": "DYNAMIC"
+						},
+						{
+							"key": "Report-To",
+							"value": "{\"endpoints\":[{\"url\":\"https:\\/\\/a.nel.cloudflare.com\\/report\\/v3?s=mc9iLx%2BQZ0ItI75EuoqDxFs9MndKZBgjWum1PTdPmcdoid7v9JVVswN6qfiIpVWtmUVgqQCYUqhj5RBFMoHD6TA1MAv6ZCt3mYP%2B2hU6NYB52NF67AbCECbTRa5srA%3D%3D\"}],\"group\":\"cf-nel\",\"max_age\":604800}"
+						},
+						{
+							"key": "NEL",
+							"value": "{\"success_fraction\":0,\"report_to\":\"cf-nel\",\"max_age\":604800}"
+						},
+						{
+							"key": "X-Content-Type-Options",
+							"value": "nosniff"
+						},
+						{
+							"key": "Server",
+							"value": "cloudflare"
+						},
+						{
+							"key": "CF-RAY",
+							"value": "7d36d6705a681194-COK"
+						},
+						{
+							"key": "Content-Encoding",
+							"value": "br"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"data\": {\n        \"allQuestionsCount\": [\n            {\n                \"difficulty\": \"All\",\n                \"count\": 2727\n            },\n            {\n                \"difficulty\": \"Easy\",\n                \"count\": 682\n            },\n            {\n                \"difficulty\": \"Medium\",\n                \"count\": 1443\n            },\n            {\n                \"difficulty\": \"Hard\",\n                \"count\": 602\n            }\n        ],\n        \"matchedUser\": {\n            \"problemsSolvedBeatsStats\": [\n                {\n                    \"difficulty\": \"Easy\",\n                    \"percentage\": 81.71\n                },\n                {\n                    \"difficulty\": \"Medium\",\n                    \"percentage\": 17.74\n                },\n                {\n                    \"difficulty\": \"Hard\",\n                    \"percentage\": null\n                }\n            ],\n            \"submitStatsGlobal\": {\n                \"acSubmissionNum\": [\n                    {\n                        \"difficulty\": \"All\",\n                        \"count\": 66\n                    },\n                    {\n                        \"difficulty\": \"Easy\",\n                        \"count\": 61\n                    },\n                    {\n                        \"difficulty\": \"Medium\",\n                        \"count\": 4\n                    },\n                    {\n                        \"difficulty\": \"Hard\",\n                        \"count\": 1\n                    }\n                ]\n            }\n        }\n    }\n}"
+				}
+			]
+		},
+		{
+			"name": "submission calender",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "graphql",
+					"graphql": {
+						"query": "query \r\nuserProfileCalendar($username: String!, $year: Int) {\r\n    matchedUser(username: $username) {    \r\n        userCalendar(year: $year) {\r\n            activeYears\r\n            streak      \r\n            totalActiveDays      \r\n            dccBadges {        \r\n                timestamp        \r\n                badge {          \r\n                    name          \r\n                    icon\r\n                    }\r\n                }\r\n            submissionCalendar \r\n            }\r\n        }\r\n    } ",
+						"variables": "{\r\n    \"username\":\"akshayur0404\"\r\n    }"
+					}
+				},
+				"url": {
+					"raw": "https://leetcode.com/graphql",
+					"protocol": "https",
+					"host": [
+						"leetcode",
+						"com"
+					],
+					"path": [
+						"graphql"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "submission calender",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "query userProfileCalendar($username: String!, $year: Int) {  matchedUser(username: $username) {    userCalendar(year: $year) {      activeYears      streak      totalActiveDays      dccBadges {        timestamp        badge {          name          icon        }      }      submissionCalendar    }  }} ",
+								"variables": "{\r\n    \"username\":\"amalmadhu06\"\r\n    }"
+							}
+						},
+						"url": {
+							"raw": "https://leetcode.com/graphql",
+							"protocol": "https",
+							"host": [
+								"leetcode",
+								"com"
+							],
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Wed, 07 Jun 2023 06:29:52 GMT"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Transfer-Encoding",
+							"value": "chunked"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "vary",
+							"value": "Cookie"
+						},
+						{
+							"key": "x-frame-options",
+							"value": "DENY"
+						},
+						{
+							"key": "set-cookie",
+							"value": "csrftoken=StmK0xiLuPWpU9bUlo31zC0wcJYGiKKkeLKEgf9Zm9iUNDYo8WfcqirYZuGsdkVC; expires=Wed, 05 Jun 2024 06:29:52 GMT; Max-Age=31449600; Path=/; SameSite=Lax; Secure"
+						},
+						{
+							"key": "strict-transport-security",
+							"value": "max-age=31536000; includeSubDomains; preload"
+						},
+						{
+							"key": "content-security-policy",
+							"value": "frame-ancestors 'self' https://*.leetcode.com https://leetcode.com https://www.growingio.com"
+						},
+						{
+							"key": "CF-Cache-Status",
+							"value": "DYNAMIC"
+						},
+						{
+							"key": "Report-To",
+							"value": "{\"endpoints\":[{\"url\":\"https:\\/\\/a.nel.cloudflare.com\\/report\\/v3?s=Vz03TmrsN8XM6S3oMTNKYBVuvvNfciteQQrC%2Bb1OpWRTRqbiK%2B2%2Bk8Cf%2BZxL0vqOSYlxKEUHUIVn3F3W3tkHVHTFoxpIECUl0M289D9IF%2F3MIcgaOCXX9egC58zJXQ%3D%3D\"}],\"group\":\"cf-nel\",\"max_age\":604800}"
+						},
+						{
+							"key": "NEL",
+							"value": "{\"success_fraction\":0,\"report_to\":\"cf-nel\",\"max_age\":604800}"
+						},
+						{
+							"key": "X-Content-Type-Options",
+							"value": "nosniff"
+						},
+						{
+							"key": "Server",
+							"value": "cloudflare"
+						},
+						{
+							"key": "CF-RAY",
+							"value": "7d36d7da6d9a1194-COK"
+						},
+						{
+							"key": "Content-Encoding",
+							"value": "br"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"data\": {\n        \"matchedUser\": {\n            \"userCalendar\": {\n                \"activeYears\": [\n                    2022,\n                    2023\n                ],\n                \"streak\": 7,\n                \"totalActiveDays\": 52,\n                \"dccBadges\": [],\n                \"submissionCalendar\": \"{\\\"1673913600\\\": 3, \\\"1674000000\\\": 3, \\\"1674086400\\\": 3, \\\"1674172800\\\": 4, \\\"1674259200\\\": 2, \\\"1674345600\\\": 11, \\\"1674518400\\\": 3, \\\"1675123200\\\": 2, \\\"1675209600\\\": 4, \\\"1675296000\\\": 18, \\\"1675382400\\\": 10, \\\"1675468800\\\": 1, \\\"1675555200\\\": 4, \\\"1675987200\\\": 2, \\\"1677715200\\\": 1, \\\"1678233600\\\": 8, \\\"1678320000\\\": 3, \\\"1678406400\\\": 1, \\\"1681171200\\\": 2, \\\"1681257600\\\": 2, \\\"1681430400\\\": 3, \\\"1681862400\\\": 2, \\\"1683504000\\\": 3, \\\"1683590400\\\": 5, \\\"1683676800\\\": 8, \\\"1683763200\\\": 3, \\\"1683849600\\\": 2, \\\"1683936000\\\": 2, \\\"1684108800\\\": 1, \\\"1684281600\\\": 2, \\\"1684368000\\\": 1, \\\"1684454400\\\": 6, \\\"1684713600\\\": 4, \\\"1684886400\\\": 1, \\\"1685577600\\\": 1, \\\"1685664000\\\": 1, \\\"1686009600\\\": 2, \\\"1686096000\\\": 5, \\\"1659139200\\\": 8, \\\"1659225600\\\": 4, \\\"1659744000\\\": 1, \\\"1659830400\\\": 3, \\\"1659916800\\\": 1, \\\"1660003200\\\": 3, \\\"1660262400\\\": 1, \\\"1660348800\\\": 6, \\\"1660435200\\\": 2, \\\"1660521600\\\": 2, \\\"1660608000\\\": 2, \\\"1660694400\\\": 1, \\\"1660780800\\\": 3, \\\"1661126400\\\": 1}\"\n            }\n        }\n    }\n}"
+				}
+			]
+		},
+		{
+			"name": "Recent Submission",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "graphql",
+					"graphql": {
+						"query": "query \r\nrecentAcSubmissions($username: String!, $limit: Int!) {\r\n    recentAcSubmissionList(username: $username, limit: $limit) {\r\n            id    \r\n            title    \r\n            titleSlug    \r\n            timestamp  \r\n            }\r\n            }",
+						"variables": "{\r\n    \"username\": \"akshayur0404\",\r\n    \"limit\": 25\r\n}"
+					}
+				},
+				"url": {
+					"raw": "https://leetcode.com/graphql",
+					"protocol": "https",
+					"host": [
+						"leetcode",
+						"com"
+					],
+					"path": [
+						"graphql"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Question Number",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "graphql",
+					"graphql": {
+						"query": "query problemsetQuestionList(\r\n    $categorySlug: String,\r\n     $limit: Int,\r\n      $skip: Int,\r\n       $filters: QuestionListFilterInput) {  \r\n           problemsetQuestionList: questionList(\r\n                   categorySlug: $categorySlug\r\n                       limit: $limit    \r\n                       skip: $skip    \r\n                       filters: $filters  ) {\r\n                               total: totalNum\r\n                                   questions: data {\r\n                                             acRate      difficulty      freqBar      frontendQuestionId: questionFrontendId     isFavor      paidOnly: isPaidOnly     status     title      titleSlug      topicTags {        name        id      slug      }      hasSolution    hasVideoSolution    }  }}    ",
+						"variables": "{\r\n    \"categorySlug\": \"\", \r\n    \"skip\": 0,\r\n     \"limit\": 50, \r\n     \"filters\": {\r\n         \"searchKeywords\": \"28\"\r\n         }\r\n}"
+					}
+				},
+				"url": {
+					"raw": "https://leetcode.com/graphql",
+					"protocol": "https",
+					"host": [
+						"leetcode",
+						"com"
+					],
+					"path": [
+						"graphql"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Solution List",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "graphql",
+					"graphql": {
+						"query": "query problemsetQuestionList(\r\n    $categorySlug: String,\r\n     $limit: Int,\r\n      $skip: Int,\r\n       $filters: QuestionListFilterInput) {  \r\n           problemsetQuestionList: questionList(\r\n                   categorySlug: $categorySlug\r\n                       limit: $limit    \r\n                       skip: $skip    \r\n                       filters: $filters  ) {\r\n                               total: totalNum\r\n                                   questions: data {\r\n                                             acRate      difficulty      freqBar      frontendQuestionId: questionFrontendId     isFavor      paidOnly: isPaidOnly     status     title      titleSlug      topicTags {        name        id      slug      }      hasSolution    hasVideoSolution    }  }}    ",
+						"variables": "{\r\n    \"categorySlug\": \"\", \r\n    \"skip\": 0,\r\n     \"limit\": 50, \r\n     \"filters\": {\r\n         \"searchKeywords\": \"28\"\r\n         }\r\n}"
+					}
+				},
+				"url": {
+					"raw": "https://leetcode.com/graphql",
+					"protocol": "https",
+					"host": [
+						"leetcode",
+						"com"
+					],
+					"path": [
+						"graphql"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
