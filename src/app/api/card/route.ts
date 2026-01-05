@@ -5,28 +5,61 @@ import { queries, LEETCODE_API_URL, QueryKey } from '../../lib/leetcode-queries'
 async function fetchAllData(username: string) {
     const results: Record<string, unknown> = {};
     const queryKeys: QueryKey[] = ['problems', 'activity', 'skills', 'profile', 'submissions'];
+    const currentYear = new Date().getFullYear();
 
     for (const queryKey of queryKeys) {
         const query = queries[queryKey];
         try {
-            const response = await fetch(LEETCODE_API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Referer': 'https://leetcode.com',
-                },
-                body: JSON.stringify({
-                    query,
-                    variables: {
-                        username,
-                        ...(queryKey === 'activity' ? { year: new Date().getFullYear() } : {}),
-                        ...(queryKey === 'submissions' ? { limit: 5 } : {})
+            if (queryKey === 'activity') {
+                // Fetch current and previous year to support trailing 12 months
+                const [currData, prevData] = await Promise.all([
+                    fetch(LEETCODE_API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Referer': 'https://leetcode.com' },
+                        body: JSON.stringify({ query, variables: { username, year: currentYear } }),
+                        next: { revalidate: 300 },
+                    }).then(r => r.json()),
+                    fetch(LEETCODE_API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Referer': 'https://leetcode.com' },
+                        body: JSON.stringify({ query, variables: { username, year: currentYear - 1 } }),
+                        next: { revalidate: 300 },
+                    }).then(r => r.json())
+                ]);
+
+                // Merge calendars
+                const currCal = JSON.parse(currData.data?.matchedUser?.userCalendar?.submissionCalendar || '{}');
+                const prevCal = JSON.parse(prevData.data?.matchedUser?.userCalendar?.submissionCalendar || '{}');
+                const mergedCal = { ...prevCal, ...currCal };
+
+                results[queryKey] = {
+                    matchedUser: {
+                        userCalendar: {
+                            ...currData.data?.matchedUser?.userCalendar,
+                            submissionCalendar: JSON.stringify(mergedCal)
+                        }
+                    }
+                };
+            } else {
+                // Standard fetch for other keys
+                const response = await fetch(LEETCODE_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Referer': 'https://leetcode.com',
                     },
-                }),
-                next: { revalidate: 300 },
-            });
-            const data = await response.json();
-            results[queryKey] = data.data;
+                    body: JSON.stringify({
+                        query,
+                        variables: {
+                            username,
+                            ...(queryKey === 'submissions' ? { limit: 5 } : {})
+                        },
+                    }),
+                    next: { revalidate: 300 },
+                });
+                const data = await response.json();
+                results[queryKey] = data.data;
+            }
         } catch {
             results[queryKey] = null;
         }
@@ -36,7 +69,7 @@ async function fetchAllData(username: string) {
 
 // Generate heatmap squares from submission calendar - compact version
 function generateHeatmap(submissionCalendar: string | null, startX: number, startY: number): string {
-    const weeks = 12; // Reduced from 20 to fit better
+    const weeks = 53; // Full year history
 
     if (!submissionCalendar) {
         // Generate empty heatmap
@@ -52,34 +85,79 @@ function generateHeatmap(submissionCalendar: string | null, startX: number, star
     }
 
     const calendar = JSON.parse(submissionCalendar);
-    const now = new Date();
     const squares: string[] = [];
+    const labels: string[] = [];
 
-    // Generate last 12 weeks (84 days)
+    // Normalize calendar keys to timestamps (seconds)
+    const normalizedCalendar: Record<string, number> = {};
+    Object.keys(calendar).forEach(key => {
+        normalizedCalendar[key] = calendar[key];
+    });
+
+    const now = new Date();
+    // Normalize now to start of day to avoid time drift issues
+    now.setHours(0, 0, 0, 0);
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    let lastMonth = -1;
+
+    // Generate last 53 weeks
     for (let week = weeks - 1; week >= 0; week--) {
+        const date = new Date(now);
+        // Calculate date for the start of this week column
+        // (week * 7) days ago is the end of the week, so subtract more for the start?
+        // Actually, let's just use the date of the first cell (Standard layout usually has Sunday at top)
+        // 6 - day(0) = 6. 
+        date.setDate(date.getDate() - (week * 7 + 6));
+        const currentMonth = date.getMonth();
+
+        const x = startX + (weeks - 1 - week) * 12;
+
+        // Add month label if month changes
+        // Only add if we aren't too close to the edge (index 0 might be cut off if we checked weeks-1)
+        // Check if it's the first column OR if month changed
+        if (currentMonth !== lastMonth) {
+            // Don't show label for the very last column if it changed there (too cramped?)
+            // But usually it's fine.
+            labels.push(`<text x="${x}" y="${startY - 6}" font-family="'Segoe UI', sans-serif" font-size="9" fill="#8b949e">${monthNames[currentMonth]}</text>`);
+            lastMonth = currentMonth;
+        }
+
         for (let day = 0; day < 7; day++) {
-            const date = new Date(now);
-            date.setDate(date.getDate() - (week * 7 + (6 - day)));
-            const timestamp = Math.floor(date.getTime() / 1000).toString();
-            const dayTimestamp = Math.floor(new Date(date.toDateString()).getTime() / 1000).toString();
+            // Calculate date for this cell
+            const cellDate = new Date(now);
+            cellDate.setDate(cellDate.getDate() - (week * 7 + (6 - day)));
 
-            const count = calendar[timestamp] || calendar[dayTimestamp] || 0;
+            // Convert to start of day timestamp (seconds)
+            const startOfDay = Math.floor(cellDate.getTime() / 1000);
+            const endOfDay = startOfDay + 86400;
 
-            let color = '#1a1a2e'; // empty
+            let count = 0;
+            if (normalizedCalendar[startOfDay.toString()]) {
+                count = normalizedCalendar[startOfDay.toString()];
+            } else {
+                for (const [tsStr, c] of Object.entries(normalizedCalendar)) {
+                    const ts = parseInt(tsStr);
+                    if (ts >= startOfDay && ts < endOfDay) {
+                        count += (c as number);
+                    }
+                }
+            }
+
+            let color = '#161b22'; // empty/bg matches panel
             if (count > 0 && count <= 2) color = '#0e4429';
             else if (count > 2 && count <= 5) color = '#006d32';
             else if (count > 5 && count <= 10) color = '#26a641';
             else if (count > 10) color = '#39d353';
 
-            const x = startX + (weeks - 1 - week) * 12;
             const y = startY + day * 12;
-            squares.push(`<rect x="${x}" y="${y}" width="9" height="9" rx="2" fill="${color}"/>`);
+            squares.push(`<rect x="${x}" y="${y}" width="9" height="9" rx="2" fill="${color}" stroke="#0d1117" stroke-width="1"/>`);
         }
     }
-    return squares.join('');
+    return labels.join('') + squares.join('');
 }
 
-// Generate the SVG card - dynamic sections
+// Generate the SVG card - Modern Dashboard Design
 function generateSVG(username: string, data: Record<string, unknown>, options: {
     showDifficulty: boolean;
     showActivity: boolean;
@@ -91,300 +169,281 @@ function generateSVG(username: string, data: Record<string, unknown>, options: {
 }): string {
     const { showDifficulty, showActivity, showStats, showBadges, showSubmissions, showBeats, showRank } = options;
 
-    // Extract data safely
-    const problems = data.problems as {
-        allQuestionsCount?: { difficulty: string; count: number }[];
-        matchedUser?: {
-            submitStatsGlobal?: { acSubmissionNum?: { difficulty: string; count: number }[] };
-            problemsSolvedBeatsStats?: { difficulty: string; percentage: number | null }[];
-        }
-    } | null;
+    // Extract data
+    const problems = data.problems as any;
+    const activity = data.activity as any;
+    const skills = data.skills as any;
+    const profile = data.profile as any;
+    const submissions = data.submissions as any;
 
-    const activity = data.activity as { matchedUser?: { userCalendar?: { streak?: number; totalActiveDays?: number; submissionCalendar?: string; dccBadges?: { badge: { name: string } }[] } } } | null;
-    const skills = data.skills as { matchedUser?: { tagProblemCounts?: { fundamental?: { tagName: string; problemsSolved: number }[]; intermediate?: { tagName: string; problemsSolved: number }[]; advanced?: { tagName: string; problemsSolved: number }[] } } } | null;
-    const profile = data.profile as { matchedUser?: { profile?: { realName?: string; ranking?: number } } } | null;
-    const submissions = data.submissions as { recentAcSubmissionList?: { title: string; timestamp: string }[] } | null;
-
-    // Problem stats
+    // Stats
     const allQuestions = problems?.allQuestionsCount || [];
     const acSubmissions = problems?.matchedUser?.submitStatsGlobal?.acSubmissionNum || [];
     const beatsStats = problems?.matchedUser?.problemsSolvedBeatsStats || [];
 
-    const totalEasy = allQuestions.find(q => q.difficulty === 'Easy')?.count || 0;
-    const totalMedium = allQuestions.find(q => q.difficulty === 'Medium')?.count || 0;
-    const totalHard = allQuestions.find(q => q.difficulty === 'Hard')?.count || 0;
-
-    const solvedEasy = acSubmissions.find(s => s.difficulty === 'Easy')?.count || 0;
-    const solvedMedium = acSubmissions.find(s => s.difficulty === 'Medium')?.count || 0;
-    const solvedHard = acSubmissions.find(s => s.difficulty === 'Hard')?.count || 0;
+    const getCount = (arr: any[], diff: string) => arr.find(q => q.difficulty === diff)?.count || 0;
+    const totalEasy = getCount(allQuestions, 'Easy');
+    const totalMedium = getCount(allQuestions, 'Medium');
+    const totalHard = getCount(allQuestions, 'Hard');
+    const solvedEasy = getCount(acSubmissions, 'Easy');
+    const solvedMedium = getCount(acSubmissions, 'Medium');
+    const solvedHard = getCount(acSubmissions, 'Hard');
     const totalSolved = solvedEasy + solvedMedium + solvedHard;
 
-    const beatsEasy = beatsStats.find(s => s.difficulty === 'Easy')?.percentage ?? 0;
-    const beatsMedium = beatsStats.find(s => s.difficulty === 'Medium')?.percentage ?? 0;
-    const beatsHard = beatsStats.find(s => s.difficulty === 'Hard')?.percentage ?? 0;
+    const getBeats = (diff: string) => beatsStats.find((s: any) => s.difficulty === diff)?.percentage ?? 0;
+    const beatsEasy = getBeats('Easy');
+    const beatsMedium = getBeats('Medium');
+    const beatsHard = getBeats('Hard');
 
-    // Top 5 skill tags
     const allTags = skills ? [
         ...(skills?.matchedUser?.tagProblemCounts?.fundamental || []),
         ...(skills?.matchedUser?.tagProblemCounts?.intermediate || []),
         ...(skills?.matchedUser?.tagProblemCounts?.advanced || []),
-    ].sort((a, b) => b.problemsSolved - a.problemsSolved).slice(0, 5) : [];
+    ].sort((a: any, b: any) => b.problemsSolved - a.problemsSolved).slice(0, 6) : [];
 
-    // Activity stats
     const streak = activity?.matchedUser?.userCalendar?.streak || 0;
     const totalActiveDays = activity?.matchedUser?.userCalendar?.totalActiveDays || 0;
     const submissionCalendar = activity?.matchedUser?.userCalendar?.submissionCalendar || null;
 
-    // Monthly challenge badges
-    const dccBadges = activity?.matchedUser?.userCalendar?.dccBadges || [];
-    const recentBadges = dccBadges.slice(-5).reverse();
+    const recentBadges = (activity?.matchedUser?.userCalendar?.dccBadges || []).slice(-3).reverse();
+    const recentSubs = (submissions?.recentAcSubmissionList || []).slice(0, 5);
 
-    // Recent Submissions
-    const recentSubs = submissions?.recentAcSubmissionList?.slice(0, 5) || [];
-
-    // Profile info
     const realName = profile?.matchedUser?.profile?.realName || '';
     const ranking = profile?.matchedUser?.profile?.ranking || 0;
 
-    // Layout Calculations
-    let currentY = 88;
-    const headerHeight = 88;
-    const row1Height = 80;
-    const rowGap = 20;
+    // Layout Constants
+    const CARD_WIDTH = 800;
+    const PADDING = 20;
+    const COL_GAP = 20;
+    const ROW_GAP = 20;
+    const COL_WIDTH = (CARD_WIDTH - (PADDING * 2) - COL_GAP) / 2; // ~370px
 
-    // Row 1: Difficulty & Activity (+ Beats if enabled)
-    const showRow1 = showDifficulty || showActivity;
-    let row1Y = currentY;
-    if (showRow1) {
-        // Increase height if Beats is enabled AND Difficulty is shown
-        const effectiveRow1Height = (showDifficulty && showBeats) ? row1Height + 25 : row1Height;
-        currentY += effectiveRow1Height + rowGap;
+    let currentY = 80; // Header height
+
+    // --- Helpers ---
+    const Panel = (x: number, y: number, w: number, h: number) =>
+        `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="12" fill="#161b22" stroke="#30363d" stroke-width="1" fill-opacity="0.8"/>`;
+
+    // --- Sections ---
+
+    // 1. Overview (Difficulty & Total)
+    let overviewHeight = 0;
+    if (showDifficulty) {
+        overviewHeight = 140;
     }
 
-    // Row 2: Skills
-    const showRow2 = showStats;
-    let row2Y = currentY;
-    if (showRow2) {
-        currentY += 60 + rowGap;
+    // 2. Activity (Heatmap)
+    let activityHeight = 0;
+    if (showActivity) {
+        activityHeight = 150;
     }
 
-    // Row 3: Badges
-    const showRow3 = showBadges;
-    let row3Y = currentY;
-    if (showRow3) {
-        currentY += 60 + rowGap;
+    // 3. Skills & Submissions (Grid)
+    let gridHeight = 0;
+    if (showStats || showSubmissions) {
+        gridHeight = 220;
     }
 
-    // Row 4: Recent Submissions
-    const showRow4 = showSubmissions;
-    let row4Y = currentY;
-    if (showRow4) {
-        currentY += (recentSubs.length * 24) + 35 + rowGap;
+    // 4. Badges (Bottom)
+    let badgesHeight = 0;
+    if (showBadges) {
+        badgesHeight = 90;
     }
 
-    const cardHeight = Math.max(150, currentY);
+    // Total Calculation
+    const totalHeight = currentY +
+        (showDifficulty ? overviewHeight + ROW_GAP : 0) +
+        (showActivity ? activityHeight + ROW_GAP : 0) +
+        ((showStats || showSubmissions) ? gridHeight + ROW_GAP : 0) +
+        (showBadges ? badgesHeight + ROW_GAP : 0) + 10; // Padding bottom
 
-    // Icons
-    const icons = {
-        difficulty: `<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zM7 12h2v5H7zm4-3h2v8h-2zm4-3h2v11h-2z" fill="#ffa116"/>`,
-        activity: `<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" fill="#ffa116"/>`, // Simplified chart-like activity
-        fire: `<path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z" fill="#ff6b35"/>`,
-        calendar: `<path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" fill="#00b8a3"/>`,
-        tag: `<path d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z" fill="#ffa116"/>`,
-        medal: `<path d="M12 7.5c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm7.5 7.5c0-4.14-3.36-7.5-7.5-7.5s-7.5 3.36-7.5 7.5S7.86 22.5 12 22.5s7.5-3.36 7.5-7.5zM12 20.5c-3.03 0-5.5-2.47-5.5-5.5s2.47-5.5 5.5-5.5 5.5 2.47 5.5 5.5-2.47 5.5-5.5 5.5z" fill="#ffa116"/>`, // Simplified medal
-        recent: `<path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z" fill="#ffa116"/>`
-    };
+    // --- Rendering ---
+    let svgContent = '';
+
+    // Header
+    svgContent += `
+        <defs>
+            <linearGradient id="textGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style="stop-color:#ffffff"/>
+                <stop offset="100%" style="stop-color:#b1b8be"/>
+            </linearGradient>
+            <filter id="shadow">
+                <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity="0.3"/>
+            </filter>
+        </defs>
+        
+        <!-- Logo & Title -->
+        <g transform="translate(${PADDING}, 24)">
+             <path d="M13.483 11.954l-1.798 1.738c-.31.31-.74.44-1.215.44s-.905-.13-1.215-.44l-2.888-2.908c-.31-.31-.468-.766-.468-1.242s.157-.905.468-1.216l2.88-2.92c.31-.31.75-.43 1.224-.43s.905.13 1.215.44l1.798 1.738c.343.343.91.33 1.267-.025.357-.358.369-.925.026-1.267l-1.74-1.757a3.37 3.37 0 0 0-1.63-.892l1.645-1.668c.344-.343.332-.91-.025-1.267-.357-.357-.924-.368-1.267-.025l-6.733 6.733c-.654.655-.996 1.558-.996 2.557 0 .999.342 1.93.996 2.583l2.898 2.907c.654.653 1.558.968 2.556.968s1.902-.341 2.556-.996l1.74-1.758c.342-.343.33-.91-.026-1.267s-.924-.369-1.267-.026zM13.874 8.673H7.11c-.468 0-.847.403-.847.898s.379.897.847.897h6.764c.468 0 .847-.402.847-.897s-.379-.898-.847-.898z" fill="#FFA116" transform="scale(1.5)"/>
+             <text x="36" y="22" font-family="'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#ffffff">LeetCode Stats</text>
+        </g>
+
+        <!-- User Info (Right) -->
+        <g transform="translate(${CARD_WIDTH - PADDING}, 24)" text-anchor="end">
+            <text x="0" y="10" font-family="'Segoe UI', sans-serif" font-size="24" font-weight="700" fill="#ffffff">@${username}</text>
+            ${showRank && ranking > 0 ? `<text x="0" y="30" font-family="'Segoe UI', sans-serif" font-size="12" fill="#8b949e">Global Rank #${ranking.toLocaleString()}</text>` : ''}
+        </g>
+        
+        <line x1="${PADDING}" y1="65" x2="${CARD_WIDTH - PADDING}" y2="65" stroke="#30363d" stroke-width="1" opacity="0.5"/>
+    `;
+
+    // 1. Difficulty Section
+    if (showDifficulty) {
+        const barWidth = 220;
+        const barHeight = 8;
+
+        svgContent += `
+        <g transform="translate(${PADDING}, ${currentY})">
+            ${Panel(0, 0, CARD_WIDTH - (PADDING * 2), overviewHeight)}
+            
+            <!-- Title -->
+            <text x="20" y="30" font-family="'Segoe UI', sans-serif" font-size="14" font-weight="600" fill="#ffa116">SOLVED PROBLEMS</text>
+            
+            <!-- Total Count (Big Number) -->
+            <g transform="translate(620, 30)">
+                 <text x="0" y="50" font-family="'Segoe UI', sans-serif" font-size="48" font-weight="800" fill="#ffffff" text-anchor="middle" filter="url(#shadow)">${totalSolved}</text>
+                 <text x="0" y="75" font-family="'Segoe UI', sans-serif" font-size="12" fill="#8b949e" text-anchor="middle">TOTAL SOLVED</text>
+            </g>
+
+            <!-- Bars Container -->
+            <g transform="translate(20, 50)">
+                <!-- Easy -->
+                <g transform="translate(0, 0)">
+                    <text x="0" y="10" font-family="'Segoe UI', sans-serif" font-size="12" fill="#00b8a3" font-weight="600">Easy</text>
+                    <text x="50" y="10" font-family="'Segoe UI', sans-serif" font-size="12" fill="#ffffff" font-weight="600">${solvedEasy} <tspan fill="#6e7681" font-weight="400">/ ${totalEasy}</tspan></text>
+                     ${showBeats ? `<text x="${barWidth}" y="10" font-family="'Segoe UI', sans-serif" font-size="11" fill="#8b949e" text-anchor="end">Beats ${beatsEasy.toFixed(1)}%</text>` : ''}
+                    
+                    <rect x="0" y="20" width="${barWidth}" height="${barHeight}" rx="4" fill="#2d333b"/>
+                    <rect x="0" y="20" width="${Math.max(barWidth * (solvedEasy / Math.max(totalEasy, 1)), 6)}" height="${barHeight}" rx="4" fill="#00b8a3"/>
+                </g>
+
+                <!-- Medium -->
+                <g transform="translate(280, 0)">
+                    <text x="0" y="10" font-family="'Segoe UI', sans-serif" font-size="12" fill="#ffc01e" font-weight="600">Medium</text>
+                    <text x="60" y="10" font-family="'Segoe UI', sans-serif" font-size="12" fill="#ffffff" font-weight="600">${solvedMedium} <tspan fill="#6e7681" font-weight="400">/ ${totalMedium}</tspan></text>
+                    ${showBeats ? `<text x="${barWidth}" y="10" font-family="'Segoe UI', sans-serif" font-size="11" fill="#8b949e" text-anchor="end">Beats ${beatsMedium.toFixed(1)}%</text>` : ''}
+
+                    <rect x="0" y="20" width="${barWidth}" height="${barHeight}" rx="4" fill="#2d333b"/>
+                    <rect x="0" y="20" width="${Math.max(barWidth * (solvedMedium / Math.max(totalMedium, 1)), 6)}" height="${barHeight}" rx="4" fill="#ffc01e"/>
+                </g>
+
+                <!-- Hard -->
+                <g transform="translate(0, 50)">
+                    <text x="0" y="10" font-family="'Segoe UI', sans-serif" font-size="12" fill="#ff375f" font-weight="600">Hard</text>
+                    <text x="50" y="10" font-family="'Segoe UI', sans-serif" font-size="12" fill="#ffffff" font-weight="600">${solvedHard} <tspan fill="#6e7681" font-weight="400">/ ${totalHard}</tspan></text>
+                    ${showBeats ? `<text x="${barWidth}" y="10" font-family="'Segoe UI', sans-serif" font-size="11" fill="#8b949e" text-anchor="end">Beats ${beatsHard.toFixed(1)}%</text>` : ''}
+                    
+                    <rect x="0" y="20" width="${barWidth}" height="${barHeight}" rx="4" fill="#2d333b"/>
+                    <rect x="0" y="20" width="${Math.max(barWidth * (solvedHard / Math.max(totalHard, 1)), 6)}" height="${barHeight}" rx="4" fill="#ff375f"/>
+                </g>
+            </g>
+        </g>`;
+        currentY += overviewHeight + ROW_GAP;
+    }
+
+    // 2. Activity / Heatmap
+    if (showActivity) {
+        svgContent += `
+        <g transform="translate(${PADDING}, ${currentY})">
+            ${Panel(0, 0, CARD_WIDTH - (PADDING * 2), activityHeight)}
+            <text x="20" y="30" font-family="'Segoe UI', sans-serif" font-size="14" font-weight="600" fill="#ffa116">ACTIVITY HEATMAP</text>
+            
+            <g transform="translate(${CARD_WIDTH - PADDING - 40}, 30)" text-anchor="end">
+                <text font-family="'Segoe UI', sans-serif" font-size="12" fill="#c9d1d9">
+                    Streak: <tspan fill="#ffffff" font-weight="700">${streak}</tspan>  |  Active: <tspan fill="#ffffff" font-weight="700">${totalActiveDays}</tspan>
+                </text>
+            </g>
+
+            <g transform="translate(20, 50)">
+                 ${generateHeatmap(submissionCalendar, 0, 0)}
+            </g>
+        </g>`;
+        currentY += activityHeight + ROW_GAP;
+    }
+
+    // 3. Grid Row (Skills & Submissions)
+    if (showStats || showSubmissions) {
+        const boxHeight = gridHeight;
+
+        // Left Column: Skills
+        if (showStats) {
+            const width = showSubmissions ? COL_WIDTH : CARD_WIDTH - (PADDING * 2);
+            svgContent += `
+             <g transform="translate(${PADDING}, ${currentY})">
+                ${Panel(0, 0, width, boxHeight)}
+                <text x="20" y="30" font-family="'Segoe UI', sans-serif" font-size="14" font-weight="600" fill="#ffa116">TOP SKILLS</text>
+                
+                <g transform="translate(20, 50)">
+                    ${allTags.length > 0 ? allTags.map((tag: any, i: number) => {
+                const col = i % 2;
+                const row = Math.floor(i / 2);
+                return `
+                        <g transform="translate(${col * (width / 2 - 10)}, ${row * 50})">
+                            <rect width="${width / 2 - 20}" height="40" rx="6" fill="#21262d"/>
+                            <text x="10" y="25" font-family="'Segoe UI', sans-serif" font-size="12" fill="#c9d1d9">${tag.tagName}</text>
+                            <text x="${width / 2 - 30}" y="25" font-family="'Segoe UI', sans-serif" font-size="12" fill="#ffa116" text-anchor="end">x${tag.problemsSolved}</text>
+                        </g>`;
+            }).join('') : `<text x="0" y="20" fill="#6e7681" font-size="12">No skills data</text>`}
+                </g>
+             </g>`;
+        }
+
+        // Right Column: Recent Submissions
+        if (showSubmissions) {
+            const xOffset = showStats ? PADDING + COL_WIDTH + COL_GAP : PADDING;
+            const width = showStats ? COL_WIDTH : CARD_WIDTH - (PADDING * 2);
+
+            svgContent += `
+             <g transform="translate(${xOffset}, ${currentY})">
+                ${Panel(0, 0, width, boxHeight)}
+                <text x="20" y="30" font-family="'Segoe UI', sans-serif" font-size="14" font-weight="600" fill="#ffa116">RECENT SUBMISSIONS</text>
+                
+                <g transform="translate(20, 50)">
+                    ${recentSubs.length > 0 ? recentSubs.map((sub: any, i: number) => `
+                        <g transform="translate(0, ${i * 32})">
+                            <text x="0" y="10" font-family="'Segoe UI', sans-serif" font-size="12" fill="#c9d1d9">${sub.title.length > 30 ? sub.title.slice(0, 28) + '...' : sub.title}</text>
+                            <text x="${width - 40}" y="10" font-family="'Segoe UI', sans-serif" font-size="11" fill="#8b949e" text-anchor="end">${new Date(parseInt(sub.timestamp) * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</text>
+                        </g>
+                    `).join('') : `<text x="0" y="20" fill="#6e7681" font-size="12">No recent submissions</text>`}
+                </g>
+             </g>`;
+        }
+
+        currentY += gridHeight + ROW_GAP;
+    }
+
+    // 4. Badges
+    if (showBadges) {
+        svgContent += `
+        <g transform="translate(${PADDING}, ${currentY})">
+            ${Panel(0, 0, CARD_WIDTH - (PADDING * 2), badgesHeight)}
+            <text x="20" y="30" font-family="'Segoe UI', sans-serif" font-size="14" font-weight="600" fill="#ffa116">BADGES</text>
+            
+            <g transform="translate(20, 50)">
+                 ${recentBadges.length > 0 ? recentBadges.map((badge: any, i: number) => `
+                    <g transform="translate(${i * 140}, 0)">
+                        <rect width="130" height="30" rx="15" fill="#2d333b"/>
+                        <text x="65" y="20" font-family="'Segoe UI', sans-serif" font-size="11" fill="#c9d1d9" text-anchor="middle">🏅 ${badge.badge.name.length > 15 ? badge.badge.name.slice(0, 15) + '...' : badge.badge.name}</text>
+                    </g>
+                 `).join('') : `<text x="0" y="20" fill="#6e7681" font-size="12">No recent badges</text>`}
+            </g>
+        </g>`;
+        currentY += badgesHeight + ROW_GAP;
+    }
 
     return `
-<svg xmlns="http://www.w3.org/2000/svg" width="800" height="${cardHeight}" viewBox="0 0 800 ${cardHeight}">
-    <defs>
-        <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#0d1117"/>
-            <stop offset="50%" style="stop-color:#161b22"/>
-            <stop offset="100%" style="stop-color:#0d1117"/>
-        </linearGradient>
-        <linearGradient id="headerGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" style="stop-color:#ffa11615"/>
-            <stop offset="100%" style="stop-color:#ffa11605"/>
-        </linearGradient>
-        <linearGradient id="accentGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" style="stop-color:#ffa116"/>
-            <stop offset="100%" style="stop-color:#ff8c00"/>
-        </linearGradient>
-        <filter id="glow">
-            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-            <feMerge>
-                <feMergeNode in="coloredBlur"/>
-                <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-        </filter>
-        <clipPath id="roundedCard">
-            <rect width="800" height="${cardHeight}" rx="16"/>
-        </clipPath>
-    </defs>
-    
-    <!-- Background -->
-    <rect width="800" height="${cardHeight}" fill="url(#bgGradient)" clip-path="url(#roundedCard)"/>
-    
-    <!-- Border -->
-    <rect x="1" y="1" width="798" height="${cardHeight - 2}" rx="15" fill="none" stroke="#30363d" stroke-width="1"/>
-    
-    <!-- Header Section -->
-    <rect x="0" y="0" width="800" height="70" fill="url(#headerGradient)" clip-path="url(#roundedCard)"/>
-    <line x1="0" y1="70" x2="800" y2="70" stroke="#30363d" stroke-width="1"/>
-    
-    <!-- LeetCode Logo -->
-    <g transform="translate(24, 20)">
-        <path d="M13.483 11.954l-1.798 1.738c-.31.31-.74.44-1.215.44s-.905-.13-1.215-.44l-2.888-2.908c-.31-.31-.468-.766-.468-1.242s.157-.905.468-1.216l2.88-2.92c.31-.31.75-.43 1.224-.43s.905.13 1.215.44l1.798 1.738c.343.343.91.33 1.267-.025.357-.358.369-.925.026-1.267l-1.74-1.757a3.37 3.37 0 0 0-1.63-.892l1.645-1.668c.344-.343.332-.91-.025-1.267-.357-.357-.924-.368-1.267-.025l-6.733 6.733c-.654.655-.996 1.558-.996 2.557 0 .999.342 1.93.996 2.583l2.898 2.907c.654.653 1.558.968 2.556.968s1.902-.341 2.556-.996l1.74-1.758c.342-.343.33-.91-.026-1.267s-.924-.369-1.267-.026zM13.874 8.673H7.11c-.468 0-.847.403-.847.898s.379.897.847.897h6.764c.468 0 .847-.402.847-.897s-.379-.898-.847-.898z" fill="#FFA116" transform="scale(1.8)"/>
-    </g>
-    
-    <!-- Username & Name -->
-    <text x="80" y="${realName && realName !== username ? '32' : '40'}" font-family="'Segoe UI', Arial, sans-serif" font-size="20" font-weight="700" fill="#ffffff">${username}</text>
-    ${realName && realName !== username ? `<text x="80" y="52" font-family="'Segoe UI', sans-serif" font-size="12" fill="#8b949e">${realName}</text>` : ''}
-    
-    <!-- Global Ranking (if enabled) -->
-    ${(showRank && ranking > 0) ? `
-    <g transform="translate(450, 24)">
-        <text x="0" y="0" font-family="'Segoe UI', sans-serif" font-size="11" fill="#8b949e">GLOBAL RANKING</text>
-        <text x="0" y="20" font-family="'Segoe UI', sans-serif" font-size="16" font-weight="600" fill="#ffffff">#${ranking.toLocaleString()}</text>
-    </g>` : ''}
-
-    <!-- Total Solved Badge (right side of header) -->
-    <g transform="translate(620, 12)">
-        <rect x="0" y="0" width="160" height="46" rx="10" fill="#21262d"/>
-        <text x="80" y="18" font-family="'Segoe UI', sans-serif" font-size="11" fill="#8b949e" text-anchor="middle">PROBLEMS SOLVED</text>
-        <text x="80" y="38" font-family="'Segoe UI', sans-serif" font-size="20" font-weight="700" fill="url(#accentGradient)" text-anchor="middle" filter="url(#glow)">${totalSolved}</text>
-    </g>
-    
-    ${showRow1 ? `
-    <!-- Row 1: Difficulty Breakdown + Activity Stats -->
-    <g transform="translate(24, ${row1Y})">
-        ${showDifficulty ? `
-        <!-- Left: Difficulty Cards -->
-        <g transform="translate(0, -6)">
-            <g transform="scale(0.8)">${icons.difficulty}</g>
-            <text x="24" y="12" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#ffa116">DIFFICULTY</text>
-        </g>
-        
-        <g transform="translate(0, 18)">
-            <!-- Easy -->
-            <rect x="0" y="0" width="110" height="60" rx="8" fill="#21262d"/>
-            <text x="55" y="20" font-family="'Segoe UI', sans-serif" font-size="10" fill="#00b8a3" text-anchor="middle" font-weight="600">EASY</text>
-            <text x="55" y="42" font-family="'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#00b8a3" text-anchor="middle">${solvedEasy}<tspan font-size="11" fill="#6e7681">/${totalEasy}</tspan></text>
-            
-            <!-- Medium -->
-            <rect x="120" y="0" width="110" height="60" rx="8" fill="#21262d" stroke="#ffc01e" stroke-width="1.5"/>
-            <text x="175" y="20" font-family="'Segoe UI', sans-serif" font-size="10" fill="#ffc01e" text-anchor="middle" font-weight="600">MEDIUM</text>
-            <text x="175" y="42" font-family="'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#ffc01e" text-anchor="middle">${solvedMedium}<tspan font-size="11" fill="#6e7681">/${totalMedium}</tspan></text>
-            
-            <!-- Hard -->
-            <rect x="240" y="0" width="110" height="60" rx="8" fill="#21262d"/>
-            <text x="295" y="20" font-family="'Segoe UI', sans-serif" font-size="10" fill="#ff375f" text-anchor="middle" font-weight="600">HARD</text>
-            <text x="295" y="42" font-family="'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#ff375f" text-anchor="middle">${solvedHard}<tspan font-size="11" fill="#6e7681">/${totalHard}</tspan></text>
-
-            <!-- Beats Stats (if enabled) -->
-            ${showBeats ? `
-            <text x="55" y="75" font-family="'Segoe UI', sans-serif" font-size="10" fill="#8b949e" text-anchor="middle">Beats ${beatsEasy.toFixed(1)}%</text>
-            <text x="175" y="75" font-family="'Segoe UI', sans-serif" font-size="10" fill="#8b949e" text-anchor="middle">Beats ${beatsMedium.toFixed(1)}%</text>
-            <text x="295" y="75" font-family="'Segoe UI', sans-serif" font-size="10" fill="#8b949e" text-anchor="middle">Beats ${beatsHard.toFixed(1)}%</text>
-            ` : ''}
-        </g>
-        ` : ''}
-        
-        ${showActivity ? `
-        <!-- Right: Activity/Heatmap -->
-        <g transform="translate(${showDifficulty ? 380 : 0}, 0)">
-            <g transform="translate(0, -6)">
-                <g transform="scale(0.8)">${icons.activity}</g>
-                <text x="24" y="12" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#ffa116">ACTIVITY</text>
-            </g>
-            
-            <g transform="translate(0, 18)">
-                <rect x="0" y="0" width="85" height="35" rx="6" fill="#21262d"/>
-                <g transform="translate(10, 8) scale(0.8)">${icons.fire}</g>
-                <text x="50" y="14" font-family="'Segoe UI', sans-serif" font-size="9" fill="#8b949e" text-anchor="middle">Streak</text>
-                <text x="50" y="28" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#ff6b35" text-anchor="middle">${streak}</text>
-
-                <rect x="95" y="0" width="85" height="35" rx="6" fill="#21262d"/>
-                <g transform="translate(105, 8) scale(0.8)">${icons.calendar}</g>
-                <text x="145" y="14" font-family="'Segoe UI', sans-serif" font-size="9" fill="#8b949e" text-anchor="middle">Active</text>
-                <text x="145" y="28" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#00b8a3" text-anchor="middle">${totalActiveDays}</text>
-                
-                <!-- Compact Heatmap -->
-                <g transform="translate(190, -8)">
-                    ${generateHeatmap(submissionCalendar, 0, 0)}
-                </g>
-            </g>
-        </g>
-        ` : ''}
-    </g>` : ''}
-    
-    ${showRow2 ? `
-    <!-- Row 2: Top Skill Tags -->
-    <g transform="translate(24, ${row2Y})">
-        <g transform="translate(0, -6)">
-            <g transform="scale(0.8)">${icons.tag}</g>
-            <text x="24" y="12" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#ffa116">TOP SKILLS</text>
-        </g>
-        
-        <g transform="translate(0, 18)">
-            ${allTags.length > 0 ? allTags.map((tag, i) => `
-                <g transform="translate(${i * 152}, 0)">
-                    <rect x="0" y="0" width="145" height="45" rx="8" fill="#21262d"/>
-                    <text x="72" y="18" font-family="'Segoe UI', sans-serif" font-size="11" fill="#c9d1d9" text-anchor="middle" font-weight="500">${tag.tagName.length > 14 ? tag.tagName.slice(0, 13) + '…' : tag.tagName}</text>
-                    <text x="72" y="35" font-family="'Segoe UI', sans-serif" font-size="10" fill="#ffa116" text-anchor="middle">${tag.problemsSolved} solved</text>
-                </g>
-            `).join('') : `
-                <rect x="0" y="0" width="200" height="45" rx="8" fill="#21262d"/>
-                <text x="100" y="28" font-family="'Segoe UI', sans-serif" font-size="11" fill="#6e7681" text-anchor="middle">No skills data available</text>
-            `}
-        </g>
-    </g>` : ''}
-    
-    ${showRow3 ? `
-    <!-- Row 3: Monthly Badges -->
-    <g transform="translate(24, ${row3Y})">
-        <g transform="translate(0, -6)">
-            <g transform="scale(0.8)">${icons.medal}</g>
-            <text x="24" y="12" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#ffa116">MONTHLY BADGES</text>
-        </g>
-        
-        <g transform="translate(0, 18)">
-            ${recentBadges.length > 0 ? recentBadges.map((badge, i) => `
-                <g transform="translate(${i * 152}, 0)">
-                    <rect x="0" y="0" width="145" height="40" rx="8" fill="#21262d"/>
-                    <text x="72" y="25" font-family="'Segoe UI', sans-serif" font-size="10" fill="#c9d1d9" text-anchor="middle">🏅 ${badge.badge.name.length > 12 ? badge.badge.name.slice(0, 11) + '…' : badge.badge.name}</text>
-                </g>
-            `).join('') : `
-                <rect x="0" y="0" width="300" height="40" rx="8" fill="#21262d"/>
-                <text x="150" y="25" font-family="'Segoe UI', sans-serif" font-size="11" fill="#6e7681" text-anchor="middle">Complete monthly challenges to earn badges</text>
-            `}
-        </g>
-    </g>` : ''}
-
-    ${showRow4 ? `
-    <!-- Row 4: Recent Submissions -->
-    <g transform="translate(24, ${row4Y})">
-        <g transform="translate(0, -6)">
-            <g transform="scale(0.8)">${icons.recent}</g>
-            <text x="24" y="12" font-family="'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#ffa116">RECENT SUBMISSIONS</text>
-        </g>
-        
-        <g transform="translate(0, 18)">
-            ${recentSubs.length > 0 ? recentSubs.map((sub, i) => `
-                <g transform="translate(0, ${i * 24})">
-                    <text x="0" y="10" font-family="'Segoe UI', sans-serif" font-size="11" fill="#c9d1d9">• ${sub.title}</text>
-                    <text x="750" y="10" font-family="'Segoe UI', sans-serif" font-size="10" fill="#8b949e" text-anchor="end">${new Date(parseInt(sub.timestamp) * 1000).toLocaleDateString()}</text>
-                </g>
-            `).join('') : `
-                <text x="0" y="10" font-family="'Segoe UI', sans-serif" font-size="11" fill="#6e7681">No recent submissions found</text>
-            `}
-        </g>
-    </g>` : ''}
-    
-    <!-- Footer -->
-    <text x="780" y="${cardHeight - 10}" font-family="'Segoe UI', sans-serif" font-size="9" fill="#30363d" text-anchor="end">leetcode-stats-card</text>
-</svg>`;
+    <svg xmlns="http://www.w3.org/2000/svg" width="${CARD_WIDTH}" height="${totalHeight}" viewBox="0 0 ${CARD_WIDTH} ${totalHeight}">
+        <rect width="${CARD_WIDTH}" height="${totalHeight}" fill="#0d1117" rx="16"/>
+        <rect width="${CARD_WIDTH}" height="${totalHeight}" fill="url(#bgGradient)" rx="16" fill-opacity="0.5"/>
+        <defs>
+             <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#161b22"/>
+                <stop offset="100%" style="stop-color:#0d1117"/>
+            </linearGradient>
+        </defs>
+        ${svgContent}
+        <text x="${CARD_WIDTH / 2}" y="${totalHeight - 12}" font-family="'Segoe UI', sans-serif" font-size="10" fill="#30363d" text-anchor="middle">Generated by leetcode-stats-card</text>
+    </svg>`;
 }
 
 
