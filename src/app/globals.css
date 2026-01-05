@@ -65,6 +65,42 @@ body {
   background-clip: text;
 }
 
+.header-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.75rem;
+}
+
+.github-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.8rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+/* Hide or adjust button on very small screens if needed, or stack */
+@media (max-width: 640px) {
+  .github-button {
+    position: static;
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.github-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--foreground);
+  border-color: var(--muted);
+}
+
 .subtitle {
   color: var(--muted);
   font-size: 0.95rem;
