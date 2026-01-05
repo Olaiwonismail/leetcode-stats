@@ -150,23 +150,6 @@ export default async function Home({ searchParams }: PageProps) {
                 <MarkdownDisplay path={cardUrl} />
               </div>
             </div>
-
-            {/* JSON Output */}
-            <div className="json-card">
-              <div className="json-header">
-                <span className="json-title">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="16 18 22 12 16 6"></polyline>
-                    <polyline points="8 6 2 12 8 18"></polyline>
-                  </svg>
-                  API JSON Response
-                </span>
-                <CopyButton text={jsonString} label="Copy JSON" />
-              </div>
-              <pre className="json-content">
-                <code>{jsonString}</code>
-              </pre>
-            </div>
           </div>
         )}
       </main>

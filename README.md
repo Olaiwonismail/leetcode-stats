@@ -2,6 +2,9 @@
 
 A Next.js application that generates dynamic, customizable LeetCode statistics cards for your GitHub profile or personal website.
 
+[![Live Demo](https://img.shields.io/badge/Live-Demo-2ea44f?style=for-the-badge&logo=vercel)](https://leetcode-git-card.vercel.app/)
+[![GitHub Repo](https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github)](https://github.com/Olaiwonismail/leetcode-stats)
+
 ## Features
 
 - **Dynamic Stats**: Fetches real-time data from LeetCode via GraphQL.
@@ -40,8 +43,12 @@ A Next.js application that generates dynamic, customizable LeetCode statistics c
 ### Example Markdown
 
 ```markdown
-[![LeetCode Stats](https://your-domain.com/api/card?username=neal_wu&difficulty=true&activity=true&skills=true)](https://leetcode.com/neal_wu)
+[![LeetCode Stats](https://leetcode-git-card.vercel.app/api/card?username=your_username&difficulty=true&activity=true&skills=true)](https://leetcode.com/your_username)
 ```
+
+### World #1 Example (cpcs)
+
+[![LeetCode Stats](https://leetcode-git-card.vercel.app/api/card?username=cpcs&difficulty=true&activity=true&skills=true&badges=true&submissions=true&beats=true&rank=true)](https://leetcode.com/u/cpcs/)
 
 ## API
 
