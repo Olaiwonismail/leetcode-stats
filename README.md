@@ -1,36 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LeetCode Stats Card
+
+A Next.js application that generates dynamic, customizable LeetCode statistics cards for your GitHub profile or personal website.
+
+## Features
+
+- **Dynamic Stats**: Fetches real-time data from LeetCode via GraphQL.
+- **Customizable**: Choose which sections to display:
+  - Difficulty Breakdown (Easy/Medium/Hard)
+  - Submission Heatmap & Streak
+  - Top Skill Tags
+  - Monthly Badges
+  - Recent Submissions
+  - Global Ranking & Beats Percentage
+- **Themeable**: Dark mode inspired design with LeetCode colors.
+- **Easy Sharing**: Generates a direct URL or Markdown snippet for easy embedding.
 
 ## Getting Started
 
-First, run the development server:
+1. **Install dependencies**:
+   ```bash
+   pnpm install
+   ```
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+2. **Run the development server**:
+   ```bash
+   pnpm run dev
+   ```
+
+3. **Open the app**:
+   Navigate to [http://localhost:3000](http://localhost:3000)
+
+## Usage
+
+1. Enter your LeetCode username.
+2. Select the sections you want to include in your card.
+3. Click **"Generate Card"**.
+4. Copy the generated **Markdown** snippet and paste it into your `README.md`.
+
+### Example Markdown
+
+```markdown
+[![LeetCode Stats](https://your-domain.com/api/card?username=neal_wu&difficulty=true&activity=true&skills=true)](https://leetcode.com/neal_wu)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## API
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The card image is generated via the `/api/card` endpoint.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**Parameters:**
 
-## Learn More
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `username` | string | required | LeetCode username |
+| `difficulty` | boolean | true | Show difficulty breakdown |
+| `activity` | boolean | true | Show submission heatamp & streak |
+| `skills` | boolean | true | Show top skill tags |
+| `badges` | boolean | true | Show monthly badges |
+| `submissions` | boolean | true | Show recent submissions |
+| `beats` | boolean | true | Show percentile stats |
+| `rank` | boolean | true | Show global ranking |
 
-To learn more about Next.js, take a look at the following resources:
+## Technologies
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Next.js](https://nextjs.org/) (App Router)
+- [TypeScript](https://www.typescriptlang.org/)
+- [TailwindCSS](https://tailwindcss.com/)
