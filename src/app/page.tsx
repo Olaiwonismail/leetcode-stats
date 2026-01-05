@@ -3,6 +3,7 @@ import { CopyButton } from './components/CopyButton';
 import { CopyUrlButton } from './components/CopyUrlButton';
 import { StatsForm } from './components/StatsForm';
 import { ScrollToResults } from './components/ScrollToResults';
+import { MarkdownDisplay } from './components/MarkdownDisplay';
 
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -47,14 +48,14 @@ export default async function Home({ searchParams }: PageProps) {
   const cardParams = new URLSearchParams();
   if (username) cardParams.set('username', username);
 
-  // Default is true, so only set false if explicitly false
-  if (params.difficulty === 'false') cardParams.set('difficulty', 'false');
-  if (params.activity === 'false') cardParams.set('activity', 'false');
-  if (params.skills === 'false') cardParams.set('skills', 'false');
-  if (params.badges === 'false') cardParams.set('badges', 'false');
-  if (params.submissions === 'false') cardParams.set('submissions', 'false');
-  if (params.beats === 'false') cardParams.set('beats', 'false');
-  if (params.rank === 'false') cardParams.set('rank', 'false');
+  // Explicitly set parameters from searchParams
+  if (params.difficulty) cardParams.set('difficulty', params.difficulty as string);
+  if (params.activity) cardParams.set('activity', params.activity as string);
+  if (params.skills) cardParams.set('skills', params.skills as string);
+  if (params.badges) cardParams.set('badges', params.badges as string);
+  if (params.submissions) cardParams.set('submissions', params.submissions as string);
+  if (params.beats) cardParams.set('beats', params.beats as string);
+  if (params.rank) cardParams.set('rank', params.rank as string);
 
   const cardUrl = username ? `/api/card?${cardParams.toString()}` : '';
 
@@ -141,12 +142,12 @@ export default async function Home({ searchParams }: PageProps) {
                     <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
                     <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
                   </svg>
-                  Card URL (for embedding)
+                  Markdown (for README)
                 </span>
                 <CopyUrlButton path={cardUrl} />
               </div>
               <div className="url-content">
-                <code>{cardUrl}</code>
+                <MarkdownDisplay path={cardUrl} />
               </div>
             </div>
 

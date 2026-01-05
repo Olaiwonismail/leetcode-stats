@@ -39,14 +39,14 @@ export function StatsForm() {
         const params = new URLSearchParams();
         params.set('username', username);
 
-        // Only set if false (default is true)
-        if (!difficulty) params.set('difficulty', 'false');
-        if (!activity) params.set('activity', 'false');
-        if (!skills) params.set('skills', 'false');
-        if (!badges) params.set('badges', 'false');
-        if (!submissions) params.set('submissions', 'false');
-        if (!beats) params.set('beats', 'false');
-        if (!rank) params.set('rank', 'false');
+        // Explicitly set all parameters based on selection
+        params.set('difficulty', difficulty.toString());
+        params.set('activity', activity.toString());
+        params.set('skills', skills.toString());
+        params.set('badges', badges.toString());
+        params.set('submissions', submissions.toString());
+        params.set('beats', beats.toString());
+        params.set('rank', rank.toString());
 
         router.push(`/?${params.toString()}`);
     };
