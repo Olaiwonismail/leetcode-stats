@@ -205,7 +205,26 @@ function generateSVG(username: string, data: Record<string, unknown>, options: {
     const totalActiveDays = activity?.matchedUser?.userCalendar?.totalActiveDays || 0;
     const submissionCalendar = activity?.matchedUser?.userCalendar?.submissionCalendar || null;
 
-    const recentBadges = (activity?.matchedUser?.userCalendar?.dccBadges || []).slice(-3).reverse();
+    // Monthly challenge badges & Global badges
+    const dccBadges = activity?.matchedUser?.userCalendar?.dccBadges || [];
+    const profileBadges = profile?.matchedUser?.badges || [];
+
+    // Combine or prefer profile badges (which include everything usually)
+    // Profile badges structure: { id, displayName, icon, creationDate }
+    // We want the most recent ones.
+    const recentBadges = profileBadges
+        .sort((a: any, b: any) => new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime())
+        .slice(0, 3)
+        .map((b: any) => ({
+            badge: { name: b.displayName }
+        }));
+
+    // If no profile badges found (rare), fallback to DCC badges
+    if (recentBadges.length === 0 && dccBadges.length > 0) {
+        recentBadges.push(...dccBadges.slice(-3).reverse());
+    }
+
+    // Recent Submissions
     const recentSubs = (submissions?.recentAcSubmissionList || []).slice(0, 5);
 
     const realName = profile?.matchedUser?.profile?.realName || '';
