@@ -214,14 +214,14 @@ function generateSVG(username: string, data: Record<string, unknown>, options: {
     // We want the most recent ones.
     const recentBadges = profileBadges
         .sort((a: any, b: any) => new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime())
-        .slice(0, 3)
+        .slice(0, 5)
         .map((b: any) => ({
             badge: { name: b.displayName }
         }));
 
     // If no profile badges found (rare), fallback to DCC badges
     if (recentBadges.length === 0 && dccBadges.length > 0) {
-        recentBadges.push(...dccBadges.slice(-3).reverse());
+        recentBadges.push(...dccBadges.slice(-5).reverse());
     }
 
     // Recent Submissions
