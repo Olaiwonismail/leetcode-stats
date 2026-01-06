@@ -491,7 +491,9 @@ export async function GET(request: NextRequest) {
                 status: 400,
                 headers: {
                     'Content-Type': 'image/svg+xml',
-                    'Cache-Control': 'no-cache',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0',
                 },
             }
         );
@@ -520,7 +522,9 @@ export async function GET(request: NextRequest) {
                     status: 404,
                     headers: {
                         'Content-Type': 'image/svg+xml',
-                        'Cache-Control': 'no-cache',
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache',
+                        'Expires': '0',
                     },
                 }
             );
@@ -540,7 +544,9 @@ export async function GET(request: NextRequest) {
             status: 200,
             headers: {
                 'Content-Type': 'image/svg+xml',
-                'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=600',
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0',
             },
         });
     } catch (error) {
@@ -554,7 +560,9 @@ export async function GET(request: NextRequest) {
                 status: 500,
                 headers: {
                     'Content-Type': 'image/svg+xml',
-                    'Cache-Control': 'no-cache',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0',
                 },
             }
         );
